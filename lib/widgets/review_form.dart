@@ -43,37 +43,51 @@ class _ReviewFormState extends State<ReviewForm> {
   @override
   Widget build(BuildContext context) {
     if (_done) {
-      return const Text('Thanks — your review was submitted.', style: TextStyle(color: Colors.grey));
+      return const Text('Thanks — your review was submitted.', style: TextStyle(color: AppColors.subtext));
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: List.generate(5, (i) {
-            final n = i + 1;
-            return GestureDetector(
-              onTap: () => setState(() => _rating = n),
-              child: Icon(
-                n <= _rating ? Icons.star : Icons.star_border,
-                color: AppColors.signal,
-                size: 22,
-              ),
-            );
-          }),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _commentCtrl,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Share your experience with this product…'),
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 6),
-          Text(_error!, style: const TextStyle(color: AppColors.flag, fontSize: 12)),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.zero),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Write a review', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(5, (i) {
+              final n = i + 1;
+              return GestureDetector(
+                onTap: () => setState(() => _rating = n),
+                child: Icon(
+                  n <= _rating ? Icons.star_rounded : Icons.star_border_rounded,
+                  color: AppColors.ink,
+                  size: 26,
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _commentCtrl,
+            maxLines: 3,
+            style: const TextStyle(fontSize: 13),
+            decoration: const InputDecoration(
+              hintText: 'Share your experience with this product…',
+              filled: true,
+              fillColor: Colors.white,
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 6),
+            Text(_error!, style: const TextStyle(color: AppColors.flag, fontSize: 12)),
+          ],
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(onPressed: _saving ? null : _submit, child: Text(_saving ? 'Submitting…' : 'Submit review')),
+          ),
         ],
-        const SizedBox(height: 10),
-        ElevatedButton(onPressed: _saving ? null : _submit, child: Text(_saving ? 'Submitting…' : 'Submit review')),
-      ],
+      ),
     );
   }
 }

@@ -1,95 +1,136 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../services/recent_searches.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
 import '../widgets/product_card.dart';
-import 'product_detail_screen.dart';
 
+/// Search results with the backend's typo-tolerant `/ai/search/`.
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final String? initialQuery;
+  const SearchScreen({super.key, this.initialQuery});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
   List<ProductListItem> _results = [];
-  String? _correctedQuery;
   bool _loading = false;
   bool _searched = false;
+  bool _error = false;
+  String _asked = '';
+  String _used = '';
+  bool _corrected = false;
 
-  Future<void> _search(String q) async {
-    if (q.trim().isEmpty) return;
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialQuery ?? '');
+    if ((widget.initialQuery ?? '').trim().isNotEmpty) _run(widget.initialQuery!);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run(String q) async {
+    final query = q.trim();
+    if (query.isEmpty) return;
+    FocusScope.of(context).unfocus();
     setState(() {
       _loading = true;
-      _searched = true;
+      _error = false;
+      _asked = query;
     });
-    ApiService.instance.track('search', extra: {'search_query': q});
-    final (usedQuery, corrected, results) = await ApiService.instance.smartSearch(q);
-    setState(() {
-      _results = results;
-      _correctedQuery = corrected ? usedQuery : null;
-      _loading = false;
-    });
+    RecentSearches.add(query);
+    try {
+      final (used, corrected, results) = await ApiService.instance.smartSearch(query);
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _used = used;
+        _corrected = corrected;
+        _searched = true;
+        _loading = false;
+      });
+      ApiService.instance.track('search', extra: {'search_query': query});
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = true;
+          _searched = true;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.paper,
       appBar: AppBar(
-        title: TextField(
-          controller: _controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Search dresses, skincare, baby gear…',
-            border: InputBorder.none,
+        toolbarHeight: 64,
+        titleSpacing: 0,
+        shape: const Border(bottom: BorderSide(color: AppColors.hairline)),
+        title: Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: TextField(
+            controller: _controller,
+            autofocus: (widget.initialQuery ?? '').isEmpty,
+            textInputAction: TextInputAction.search,
+            onSubmitted: _run,
+            decoration: InputDecoration(
+              hintText: 'Search styles, brands, categories…',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: _controller.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => setState(_controller.clear),
+                    ),
+            ),
+            onChanged: (_) => setState(() {}),
           ),
-          onSubmitted: _search,
         ),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () => _search(_controller.text)),
-        ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : !_searched
-              ? const Center(child: Text('Search the whole duka catalog.', style: TextStyle(color: Colors.grey)))
-              : Column(
-                  children: [
-                    if (_correctedQuery != null)
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          'Showing results for "$_correctedQuery" (smart search corrected your spelling).',
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ),
-                    Expanded(
-                      child: _results.isEmpty
-                          ? const Center(child: Text('No products matched your search.', style: TextStyle(color: Colors.grey)))
-                          : GridView.builder(
-                              padding: const EdgeInsets.all(12),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                mainAxisSpacing: 12,
-                                crossAxisSpacing: 12,
-                                childAspectRatio: 0.62,
-                              ),
-                              itemCount: _results.length,
-                              itemBuilder: (context, i) {
-                                final p = _results[i];
-                                return ProductCard(
-                                  product: p,
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => ProductDetailScreen(slug: p.slug)),
-                                  ),
-                                );
-                              },
+          ? const Padding(padding: EdgeInsets.only(top: 24), child: ProductGridSkeleton())
+          : _error
+              ? LarkErrorState(onRetry: () => _run(_asked))
+              : !_searched
+                  ? const LarkEmptyState(
+                      icon: Icons.search,
+                      title: 'Search LarkTribe',
+                      message: 'Try a style, a brand or a category. Typos are fine — we will find it.')
+                  : _results.isEmpty
+                      ? LarkEmptyState(
+                          icon: Icons.search_off,
+                          title: 'No results',
+                          message: 'We could not find "$_asked". Try a different word.')
+                      : ListView(
+                          padding: const EdgeInsets.only(top: 16, bottom: 40),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text('${_results.length} RESULT${_results.length == 1 ? '' : 'S'}',
+                                    style: AppType.labelBadge(AppColors.goldDeep)),
+                                if (_corrected) ...[
+                                  const SizedBox(height: 6),
+                                  Text('Showing results for "$_used" instead of "$_asked".',
+                                      style: AppType.bodySm(AppColors.inkSoft)),
+                                ],
+                              ]),
                             ),
-                    ),
-                  ],
-                ),
+                            MasonryProducts(products: _results),
+                          ],
+                        ),
     );
   }
 }

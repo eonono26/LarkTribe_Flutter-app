@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
-import '../services/api_service.dart';
+import 'api_service.dart';
 
 class CartProvider extends ChangeNotifier {
   Cart? _cart;
@@ -9,20 +9,23 @@ class CartProvider extends ChangeNotifier {
   Cart? get cart => _cart;
   bool get isLoading => _isLoading;
   int get itemCount => _cart?.itemCount ?? 0;
+  double get subtotal => _cart?.subtotal ?? 0;
 
   Future<void> refresh() async {
     try {
       _cart = await ApiService.instance.getCart();
     } catch (_) {
-      // backend unreachable; leave previous state
+      // backend unreachable; keep previous state
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> addItem(int productId, {int quantity = 1}) async {
-    _cart = await ApiService.instance.addToCart(productId, quantity: quantity);
+  /// Throws [ApiException] with the backend's message (e.g. "Not enough
+  /// stock", "Choose a size") so the UI can show it.
+  Future<void> addItem(int productId, {int quantity = 1, int? variantId}) async {
+    _cart = await ApiService.instance.addToCart(productId, quantity: quantity, variantId: variantId);
     notifyListeners();
   }
 

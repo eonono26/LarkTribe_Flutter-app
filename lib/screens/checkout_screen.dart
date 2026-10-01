@@ -1,348 +1,325 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/cart_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/auth_gate.dart';
+import '../widgets/common.dart';
+import '../widgets/form_bits.dart';
 import '../widgets/product_card.dart';
+import 'main_shell.dart';
 import 'order_detail_screen.dart';
 
-enum _CheckoutMode { member, guest }
-
+/// Secure checkout — same fields and totals as the storefront, styled to
+/// match the bag. Pops `true` after an order is placed.
 class CheckoutScreen extends StatefulWidget {
-  const CheckoutScreen({super.key});
+  final String couponCode;
+  final double couponDiscount;
+  const CheckoutScreen({super.key, this.couponCode = '', this.couponDiscount = 0});
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  _CheckoutMode _mode = _CheckoutMode.guest;
-  bool _identified = false;
-  String? _authError;
+  final _email = TextEditingController();
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
+  final _address = TextEditingController();
+  final _city = TextEditingController();
 
-  final _emailCtrl = TextEditingController();
-  final _usernameCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-
-  final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _couponCtrl = TextEditingController();
-  String _paymentMethod = 'mpesa';
-
+  String _payment = 'mpesa';
+  List<SavedAddress> _saved = [];
+  int? _selectedAddress;
   bool _placing = false;
-  String? _orderNumber;
   String? _error;
 
-  bool _couponChecking = false;
-  String? _couponStatus; // 'applied' | 'invalid'
-  double _discount = 0;
-
-  Future<void> _continue() async {
-    setState(() => _authError = null);
-    if (_mode == _CheckoutMode.member) {
-      final ok = await ApiService.instance.login(_usernameCtrl.text, _passwordCtrl.text);
-      if (!ok) {
-        setState(() => _authError = "Couldn't sign you in — check your username and password.");
-        return;
-      }
-    } else {
-      if (_emailCtrl.text.isEmpty) {
-        setState(() => _authError = 'Enter an email address to continue as guest.');
-        return;
-      }
-    }
-    setState(() => _identified = true);
+  @override
+  void initState() {
+    super.initState();
+    _prefill();
   }
 
-  Future<void> _applyCoupon() async {
-    final cart = context.read<CartProvider>().cart;
-    if (_couponCtrl.text.trim().isEmpty || cart == null) return;
-    setState(() => _couponChecking = true);
-    final (valid, discount, _) = await ApiService.instance.validateCoupon(
-      _couponCtrl.text.trim(),
-      double.tryParse(cart.total) ?? 0,
-    );
+  @override
+  void dispose() {
+    for (final c in [_email, _name, _phone, _address, _city]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _prefill() async {
+    final api = ApiService.instance;
+    if (!api.isLoggedIn) return;
+    final profile = api.cachedProfile ?? await api.me();
+    final addresses = await api.addresses();
+    final methods = await api.paymentMethods();
+    if (!mounted) return;
     setState(() {
-      _couponChecking = false;
-      _couponStatus = valid ? 'applied' : 'invalid';
-      _discount = valid ? discount : 0;
+      _saved = addresses;
+      if (profile != null) {
+        if (_name.text.isEmpty) _name.text = profile.displayName;
+        if (_phone.text.isEmpty) _phone.text = profile.phone;
+      }
+      final def = addresses.where((a) => a.isDefault).toList();
+      if (def.isNotEmpty) {
+        _useAddress(def.first);
+      } else if (addresses.isNotEmpty) {
+        _useAddress(addresses.first);
+      }
+      final defMethod = methods.where((m) => m.isDefault).toList();
+      if (defMethod.isNotEmpty) _payment = defMethod.first.type;
     });
   }
 
-  Future<void> _placeOrder() async {
+  void _useAddress(SavedAddress a) {
+    _selectedAddress = a.id;
+    _name.text = a.fullName;
+    _phone.text = a.phone;
+    _address.text = a.addressLine;
+    _city.text = a.city;
+  }
+
+  Future<void> _place() async {
+    final api = ApiService.instance;
+    if (!api.isLoggedIn && _email.text.trim().isEmpty) {
+      setState(() => _error = 'Enter your email so we can send your receipt.');
+      return;
+    }
+    if (_name.text.trim().isEmpty ||
+        _phone.text.trim().isEmpty ||
+        _address.text.trim().isEmpty ||
+        _city.text.trim().isEmpty) {
+      setState(() => _error = 'Please complete your delivery details.');
+      return;
+    }
     setState(() {
       _placing = true;
       _error = null;
     });
     try {
-      final result = await ApiService.instance.checkout(
-        guestEmail: _mode == _CheckoutMode.guest ? _emailCtrl.text : null,
-        paymentMethod: _paymentMethod,
-        shippingName: _nameCtrl.text,
-        shippingPhone: _phoneCtrl.text,
-        shippingAddress: _addressCtrl.text,
-        shippingCity: _cityCtrl.text,
-        couponCode: _couponStatus == 'applied' ? _couponCtrl.text.trim() : '',
+      final order = await api.checkout(
+        guestEmail: api.isLoggedIn ? null : _email.text.trim(),
+        paymentMethod: _payment,
+        shippingName: _name.text.trim(),
+        shippingPhone: _phone.text.trim(),
+        shippingAddress: _address.text.trim(),
+        shippingCity: _city.text.trim(),
+        couponCode: widget.couponCode,
       );
-      setState(() => _orderNumber = result['order_number']);
-      if (mounted) context.read<CartProvider>().refresh();
+      if (!mounted) return;
+      await context.read<CartProvider>().refresh();
+      if (!mounted) return;
+      final number = order['order_number']?.toString() ?? '';
+      final total = order['total']?.toString() ?? '0';
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: Text('Order placed', style: AppType.headlineMd(AppColors.ink)),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Eyebrow('Order number'),
+            const SizedBox(height: 4),
+            Text('#$number', style: AppType.headlineSm(AppColors.ink)),
+            const SizedBox(height: 12),
+            Text('Total ${formatKES(total)}', style: AppText.price(15)),
+            const SizedBox(height: 12),
+            Text(
+              _payment == 'cod'
+                  ? 'Pay the courier when your order arrives.'
+                  : 'We will confirm your payment shortly.',
+              style: AppType.bodyMd(AppColors.inkSoft),
+            ),
+          ]),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+              },
+              child: const Text('Done'),
+            ),
+            if (api.isLoggedIn || number.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => OrderDetailScreen(orderNumber: number)));
+                },
+                child: const Text('Track order'),
+              ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      Navigator.popUntil(context, (r) => r.isFirst);
+      shellTab.value = api.isLoggedIn ? 4 : 0;
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = 'Something went wrong placing your order. Please try again.');
+      if (mounted) setState(() => _error = 'Checkout failed. Please try again.');
     } finally {
-      setState(() => _placing = false);
+      if (mounted) setState(() => _placing = false);
     }
+  }
+
+  Widget _step(String number, String title, Widget child) => Padding(
+        padding: const EdgeInsets.only(bottom: 28),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Text('0$number', style: AppType.labelBadge(AppColors.goldDeep)),
+            const SizedBox(width: 8),
+            Text('/ 03', style: AppType.labelBadge(AppColors.inkSoft)),
+            const SizedBox(width: 12),
+            Text(title.toUpperCase(), style: AppType.labelCaps(AppColors.ink)),
+          ]),
+          const SizedBox(height: 16),
+          child,
+        ]),
+      );
+
+  Widget _paymentOption(String value, String title, String subtitle, IconData icon) {
+    final selected = _payment == value;
+    return GestureDetector(
+      onTap: () => setState(() => _payment = value),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.ink : Colors.white,
+          borderRadius: BorderRadius.circular(AppRadii.xs),
+        ),
+        child: Row(children: [
+          Icon(icon, size: 22, color: selected ? Colors.white : AppColors.ink),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: AppType.bodyMd(selected ? Colors.white : AppColors.ink).copyWith(fontWeight: FontWeight.w600)),
+              Text(subtitle, style: AppType.bodySm(selected ? Colors.white70 : AppColors.inkSoft)),
+            ]),
+          ),
+          Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              size: 20, color: selected ? AppColors.goldOnDark : AppColors.stone400),
+        ]),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_orderNumber != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Order placed')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Order placed 🎉', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 12),
-                Text('Your order $_orderNumber is confirmed.', textAlign: TextAlign.center),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => OrderDetailScreen(orderNumber: _orderNumber!)),
-                      ),
-                      child: const Text('Track order'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
-                      child: const Text('Continue shopping'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    final cart = context.watch<CartProvider>();
+    final api = ApiService.instance;
+    final member = api.isLoggedIn;
+    final t = CartTotals.compute(cart.subtotal, member: member, coupon: widget.couponDiscount);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Checkout')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: _identified ? _buildDetailsStep() : _buildIdentifyStep(),
-      ),
-    );
-  }
-
-  Widget _buildIdentifyStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'HOW WOULD YOU LIKE TO\nCHECKOUT?',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.2),
-        ),
-        const SizedBox(height: 28),
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.circular(999)),
-          child: Row(
-            children: [
-              Expanded(child: _toggleButton('Member login', _CheckoutMode.member)),
-              Expanded(child: _toggleButton('Guest checkout', _CheckoutMode.guest)),
-            ],
+      backgroundColor: AppColors.paper,
+      appBar: const AtelierAppBar(title: 'Secure checkout'),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
+        children: [
+          Text('Checkout', style: AppType.headlineLg(AppColors.ink)),
+          const SizedBox(height: 22),
+          _step(
+            '1',
+            'Contact',
+            member
+                ? Panel(
+                    margin: EdgeInsets.zero,
+                    child: Row(children: [
+                      const Icon(Icons.verified_user_outlined, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text('Signed in as ${api.cachedProfile?.displayName ?? 'member'}',
+                            style: AppType.bodyMd(AppColors.ink)),
+                      ),
+                    ]),
+                  )
+                : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    LabeledField(
+                        label: 'Email for your receipt',
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress),
+                    GestureDetector(
+                      onTap: () async {
+                        if (await ensureSignedIn(context) && mounted) {
+                          setState(() {});
+                          _prefill();
+                        }
+                      },
+                      child: Text('ALREADY A MEMBER? SIGN IN TO SAVE 5%',
+                          style: AppType.labelBadge(AppColors.goldDeep)
+                              .copyWith(decoration: TextDecoration.underline)),
+                    ),
+                  ]),
           ),
-        ),
-        const SizedBox(height: 20),
-        if (_mode == _CheckoutMode.member) ...[
-          TextField(controller: _usernameCtrl, decoration: const InputDecoration(hintText: 'Username')),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _passwordCtrl,
-            obscureText: true,
-            decoration: const InputDecoration(hintText: 'Password'),
+          _step(
+            '2',
+            'Delivery',
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (_saved.isNotEmpty) ...[
+                SizedBox(
+                  height: 44,
+                  child: ListView(scrollDirection: Axis.horizontal, children: [
+                    for (final a in _saved)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: PillChip(a.label.isEmpty ? 'Address' : a.label[0].toUpperCase() + a.label.substring(1),
+                            selected: _selectedAddress == a.id,
+                            icon: Icons.place_outlined,
+                            onTap: () => setState(() => _useAddress(a))),
+                      ),
+                  ]),
+                ),
+                const SizedBox(height: 16),
+              ],
+              LabeledField(label: 'Full name', controller: _name, capitalization: TextCapitalization.words),
+              LabeledField(label: 'Phone', controller: _phone, keyboardType: TextInputType.phone, hint: '07XX XXX XXX'),
+              LabeledField(label: 'Address', controller: _address, hint: 'Street, building, apartment'),
+              LabeledField(label: 'City / town', controller: _city, capitalization: TextCapitalization.words),
+            ]),
           ),
-          const SizedBox(height: 8),
-          const Text('Sign in to check out faster next time.', style: TextStyle(color: Colors.grey, fontSize: 13)),
-        ] else ...[
-          TextField(
-            controller: _emailCtrl,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(hintText: 'Enter email address'),
+          _step(
+            '3',
+            'Payment',
+            Column(children: [
+              _paymentOption('mpesa', 'M-Pesa', 'Pay with your phone via Daraja', Icons.phone_android),
+              _paymentOption('card', 'Card', 'Visa or Mastercard', Icons.credit_card),
+              _paymentOption('cod', 'Cash on delivery', 'Pay the courier on arrival', Icons.payments_outlined),
+            ]),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Checkout quickly as a guest (you can create an account later if you wish).',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
+          Panel(
+            margin: EdgeInsets.zero,
+            padding: const EdgeInsets.all(18),
+            child: Column(children: [
+              KeyValueRow('Subtotal', formatKES(t.subtotal.toStringAsFixed(0))),
+              KeyValueRow('Delivery', t.shipping == 0 ? 'FREE' : formatKES(t.shipping.toStringAsFixed(0)),
+                  valueColor: t.shipping == 0 ? AppColors.goldDeep : null),
+              if (member && t.member > 0)
+                KeyValueRow('Member discount (5%)', '− ${formatKES(t.member.toStringAsFixed(0))}',
+                    valueColor: AppColors.goldDeep),
+              if (t.coupon > 0)
+                KeyValueRow('Promo ${widget.couponCode}', '− ${formatKES(t.coupon.toStringAsFixed(0))}',
+                    valueColor: AppColors.goldDeep),
+              const Divider(height: 24),
+              Row(children: [
+                Expanded(child: Text('TOTAL', style: AppType.headlineMd(AppColors.ink).copyWith(fontSize: 19))),
+                Text(formatKES(t.total.toStringAsFixed(0)),
+                    style: AppType.headlineLg(AppColors.ink).copyWith(fontSize: 26)),
+              ]),
+            ]),
           ),
-        ],
-        if (_authError != null) ...[
-          const SizedBox(height: 10),
-          Text(_authError!, style: const TextStyle(color: AppColors.flag, fontSize: 13)),
-        ],
-        const SizedBox(height: 24),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.signal, foregroundColor: AppColors.ink),
-          onPressed: _continue,
-          child: const Text('Continue'),
-        ),
-      ],
-    );
-  }
-
-  Widget _toggleButton(String label, _CheckoutMode mode) {
-    final selected = _mode == mode;
-    return GestureDetector(
-      onTap: () => setState(() => _mode = mode),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.ink : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.grey[600],
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsStep() {
-    final cart = context.watch<CartProvider>().cart;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Delivery & payment', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
-        TextField(controller: _nameCtrl, decoration: const InputDecoration(hintText: 'Full name')),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _phoneCtrl,
-          keyboardType: TextInputType.phone,
-          decoration: const InputDecoration(hintText: 'Phone number (for M-Pesa & delivery)'),
-        ),
-        const SizedBox(height: 10),
-        TextField(controller: _addressCtrl, decoration: const InputDecoration(hintText: 'Delivery address')),
-        const SizedBox(height: 10),
-        TextField(controller: _cityCtrl, decoration: const InputDecoration(hintText: 'Town / City')),
-        const SizedBox(height: 16),
-        const Text('Payment method', style: TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _paymentOption('mpesa', 'M-Pesa'),
-            const SizedBox(width: 8),
-            _paymentOption('card', 'Card'),
-            const SizedBox(width: 8),
-            _paymentOption('cod', 'Cash'),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const Text('Coupon code', style: TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _couponCtrl,
-                enabled: _couponStatus != 'applied',
-                decoration: const InputDecoration(hintText: 'e.g. WELCOME10'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            OutlinedButton(
-              onPressed: (_couponChecking || _couponStatus == 'applied') ? null : _applyCoupon,
-              child: Text(_couponStatus == 'applied' ? 'Applied' : 'Apply'),
-            ),
-          ],
-        ),
-        if (_couponStatus == 'applied')
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text('Coupon applied — ${formatKES(_discount.toStringAsFixed(2))} off.',
-                style: const TextStyle(color: AppColors.deptMaternity, fontSize: 13)),
-          ),
-        if (_couponStatus == 'invalid')
-          const Padding(
-            padding: EdgeInsets.only(top: 4),
-            child: Text('Invalid or expired coupon.', style: TextStyle(color: AppColors.flag, fontSize: 13)),
-          ),
-        const SizedBox(height: 20),
-        if (cart != null) ...[
-          if (_discount > 0)
+          if (_error != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Coupon discount', style: TextStyle(color: AppColors.deptMaternity)),
-                  Text('-${formatKES(_discount.toStringAsFixed(2))}', style: const TextStyle(color: AppColors.deptMaternity)),
-                ],
-              ),
+              padding: const EdgeInsets.only(top: 14),
+              child: Text(_error!, style: AppType.bodySm(AppColors.error)),
             ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Total'),
-              Text(
-                formatKES(((double.tryParse(cart.total) ?? 0) - _discount).toStringAsFixed(2)),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ],
-          ),
+          const SizedBox(height: 18),
+          InkButton('Place order', icon: Icons.lock_outline, loading: _placing, onPressed: _place),
+          const SizedBox(height: 10),
+          Text('Final totals are confirmed by the store when your order is placed.',
+              textAlign: TextAlign.center, style: AppType.bodySm(AppColors.subtext)),
         ],
-        if (_error != null) ...[
-          const SizedBox(height: 8),
-          Text(_error!, style: const TextStyle(color: AppColors.flag, fontSize: 13)),
-        ],
-        const SizedBox(height: 16),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.signal, foregroundColor: AppColors.ink),
-          onPressed: (_placing || _nameCtrl.text.isEmpty) ? null : _placeOrder,
-          child: Text(_placing ? 'Placing order…' : 'Place order'),
-        ),
-      ],
-    );
-  }
-
-  Widget _paymentOption(String value, String label) {
-    final selected = _paymentMethod == value;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _paymentMethod = value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.ink : Colors.transparent,
-            border: Border.all(color: selected ? AppColors.ink : AppColors.line),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: selected ? Colors.white : AppColors.ink,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
-          ),
-        ),
       ),
     );
   }

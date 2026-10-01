@@ -1,7 +1,7 @@
-name: duka
-description: Multi-vendor marketplace app for Women, Kids, Beauty, Maternity, and Home & Lifestyle.
+name: larktribe
+description: "Larktribe — multi-vendor marketplace app (Flutter client for the Django backend)."
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0+1
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -10,15 +10,15 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.6
-  http: ^1.2.1
   provider: ^6.1.2
+  http: ^1.2.1
   shared_preferences: ^2.2.3
-  cached_network_image: ^3.3.1
   flutter_secure_storage: ^9.2.2
-  # Add these to enable native Google/Apple sign-in buttons in login_screen.dart
-  # (wire the returned id_token into ApiService.instance.socialLogin):
-  # google_sign_in: ^6.2.1
-  # sign_in_with_apple: ^6.1.1
+  cached_network_image: ^3.3.1
+  video_player: ^2.9.1
+  url_launcher: ^6.3.0
+  shimmer: ^3.0.0
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
