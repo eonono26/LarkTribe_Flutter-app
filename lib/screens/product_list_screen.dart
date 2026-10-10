@@ -87,9 +87,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     super.initState();
     _gender = widget.gender;
     _onSale = widget.onSale ?? false;
-    _scroll.addListener(() {
-      if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 600) _loadMore();
-    });
     _load(reset: true);
   }
 
@@ -163,7 +160,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         _page += 1;
       });
     } catch (_) {
-      // leave _hasMore as-is so the next scroll retries
+      // leave _hasMore as-is so the button can be tapped again to retry
     } finally {
       if (mounted) setState(() => _loadingMore = false);
     }
@@ -377,11 +374,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           child: Text(widget.title, style: AppType.headlineLg(AppColors.ink)),
                         ),
                         if (!_dedicated) ...[
-                          SizedBox(
-                            height: 44,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
                               children: [
                                 _toolbarPill(
                                   Row(children: [
@@ -394,7 +391,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   bg: AppColors.ink,
                                   onTap: _openFilters,
                                 ),
-                                const SizedBox(width: 8),
                                 _toolbarPill(
                                   Row(children: [
                                     Text('SORT: ${(_sortLabels[_ordering] ?? 'Newest').toUpperCase()}',
@@ -406,7 +402,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   onTap: _openSort,
                                 ),
                                 if (_size != null) ...[
-                                  const SizedBox(width: 8),
                                   _toolbarPill(
                                     Row(children: [
                                       Text('SIZE: $_size',
@@ -453,7 +448,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         else
                           MasonryProducts(products: _items, showCategoryBadge: false),
                         if (_loadingMore)
-                          const Padding(padding: EdgeInsets.all(24), child: LarkLoading()),
+                          const Padding(padding: EdgeInsets.all(24), child: LarkLoading())
+                        else if (_hasMore && _items.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+                            child: InkButton(
+                              'Load more',
+                              variant: InkVariant.outline,
+                              height: 48,
+                              onPressed: _loadMore,
+                            ),
+                          ),
                         const SizedBox(height: 16),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),

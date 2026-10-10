@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import 'common.dart';
 import '../screens/product_list_screen.dart';
 
 /// "Shop by Baby / Kids / Teens" — mirrors the web app's Header.tsx nav:
@@ -38,28 +39,30 @@ class AgeGroupNav extends StatelessWidget {
           child: Text('Shop by Baby, Kids & Teens', style: Theme.of(context).textTheme.titleLarge),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 108,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+        // All tiles share the width equally: nothing hidden, no scrolling.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final s in _stages)
-                if (ageGroups.any((g) => g.stage == s.key) || ageGroups.isEmpty) ...[
-                  _StageTile(
-                    label: s.label,
-                    icon: s.icon,
-                    color: AppColors.departmentColor('kids'),
-                    onTap: () => _openStageSheet(context, s.key, s.label),
+                if (ageGroups.any((g) => g.stage == s.key) || ageGroups.isEmpty)
+                  Expanded(
+                    child: _StageTile(
+                      label: s.label,
+                      icon: s.icon,
+                      color: AppColors.departmentColor('kids'),
+                      onTap: () => _openStageSheet(context, s.key, s.label),
+                    ),
                   ),
-                  const SizedBox(width: 14),
-                ],
               if (brands.isNotEmpty)
-                _StageTile(
-                  label: 'Brands',
-                  icon: Icons.sell_rounded,
-                  color: AppColors.ink,
-                  onTap: () => _openBrandsSheet(context),
+                Expanded(
+                  child: _StageTile(
+                    label: 'Brands',
+                    icon: Icons.sell_rounded,
+                    color: AppColors.ink,
+                    onTap: () => _openBrandsSheet(context),
+                  ),
                 ),
             ],
           ),
@@ -143,9 +146,9 @@ class _StageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: SizedBox(
-        width: 76,
         child: Column(
           children: [
             Container(

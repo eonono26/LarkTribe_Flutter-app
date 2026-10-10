@@ -342,10 +342,11 @@ class _ColorDots extends StatelessWidget {
   }
 }
 
-/// Two-column staggered grid.
+/// Two-column product grid.
 ///
-/// The right column starts slightly lower to create the
-/// editorial/masonry appearance.
+/// Products are laid out in rows of two so the left and right cards share
+/// the same top and bottom edges. Cards use the same image ratio and a
+/// single-line name/price block, so every card is the same height.
 ///
 /// Non-scrolling — place inside a ListView/SingleChildScrollView.
 class MasonryProducts extends StatelessWidget {
@@ -362,38 +363,42 @@ class MasonryProducts extends StatelessWidget {
     this.showCategoryBadge = false,
   });
 
+  static const double _gap = 12;
+  static const double _rowSpacing = 26;
+
+  Widget _cell(ProductListItem p) => ProductCard(
+        product: p,
+        imageBadge: showCategoryBadge ? p.categoryName : null,
+      );
+
   @override
   Widget build(BuildContext context) {
-    final left = <ProductListItem>[];
-    final right = <ProductListItem>[];
+    final rows = <Widget>[];
 
-    for (var i = 0; i < products.length; i++) {
-      (i.isEven ? left : right).add(products[i]);
-    }
+    for (var i = 0; i < products.length; i += 2) {
+      final hasRight = i + 1 < products.length;
 
-    Widget col(
-      List<ProductListItem> items,
-      double top,
-    ) {
-      return Expanded(
-        child: Padding(
-          padding: EdgeInsets.only(top: top),
-          child: Column(
-            children: [
-              for (final p in items)
-                Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: 26,
-                  ),
-                  child: ProductCard(
-                    product: p,
-                    imageBadge:
-                        showCategoryBadge
-                            ? p.categoryName
-                            : null,
-                  ),
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(
+            bottom: i + 2 < products.length ? _rowSpacing : 0,
+          ),
+          // IntrinsicHeight + stretch keeps both cards on the exact same
+          // top and bottom line even if one card's text wraps differently.
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _cell(products[i])),
+                const SizedBox(width: _gap),
+                // Empty slot keeps a lone last card the same width.
+                Expanded(
+                  child: hasRight
+                      ? _cell(products[i + 1])
+                      : const SizedBox.shrink(),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -401,15 +406,7 @@ class MasonryProducts extends StatelessWidget {
 
     return Padding(
       padding: padding,
-      child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-        children: [
-          col(left, 0),
-          const SizedBox(width: 12),
-          col(right, 28),
-        ],
-      ),
+      child: Column(children: rows),
     );
   }
 }

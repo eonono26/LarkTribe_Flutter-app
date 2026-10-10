@@ -220,19 +220,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ? HeroCarousel(campaigns: heroCampaigns)
                                 : _fallbackHero(),
                             if (_departments.isNotEmpty)
-                              SizedBox(
-                                height: 64,
-                                child: ListView(
-                                  scrollDirection: Axis.horizontal,
-                                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: [
                                     PillChip('All', selected: _dept == null, onTap: () => setState(() => _dept = null)),
-                                    for (final d in _departments) ...[
-                                      const SizedBox(width: 8),
+                                    for (final d in _departments)
                                       PillChip(d.name,
                                           selected: _dept == d.slug,
                                           onTap: () => setState(() => _dept = d.slug)),
-                                    ],
                                   ],
                                 ),
                               ),
