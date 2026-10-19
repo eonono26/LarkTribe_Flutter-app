@@ -113,6 +113,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!mounted) return;
       final number = order['order_number']?.toString() ?? '';
       final total = order['total']?.toString() ?? '0';
+      String paymentMessage;
+      if (_payment == 'mpesa') {
+        try {
+          final result = await api.initiateMpesa(orderNumber: number, phone: _phone.text.trim());
+          paymentMessage = '${result['message'] ?? 'Check your phone and enter your M-Pesa PIN.'} Payment is pending until Safaricom confirms it.';
+        } on ApiException catch (e) {
+          // The order exists even if Daraja is unavailable; make the retry path clear.
+          paymentMessage = 'Order created, but M-Pesa could not be started: ${e.message} Open your order details and retry payment after checking your connection.';
+        }
+      } else if (_payment == 'cod') {
+        paymentMessage = 'Pay the courier when your order arrives.';
+      } else {
+        paymentMessage = 'Card payment is not enabled yet. This order has not been marked as paid.';
+      }
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -126,9 +140,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Text('Total ${formatKES(total)}', style: AppText.price(15)),
             const SizedBox(height: 12),
             Text(
-              _payment == 'cod'
-                  ? 'Pay the courier when your order arrives.'
-                  : 'We will confirm your payment shortly.',
+              paymentMessage,
               style: AppType.bodyMd(AppColors.inkSoft),
             ),
           ]),
