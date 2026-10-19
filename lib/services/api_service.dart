@@ -768,4 +768,29 @@ class ApiService {
     }
     return _decode(res) as Map<String, dynamic>;
   }
+
+  /// Starts Safaricom STK Push for an order already created by checkout.
+  Future<Map<String, dynamic>> initiateMpesa({
+    required String orderNumber,
+    String? phone,
+  }) async {
+    final res = await _req(
+      'POST',
+      '/orders/mpesa/initiate/${Uri.encodeComponent(orderNumber)}/',
+      body: {if (phone != null && phone.isNotEmpty) 'phone': phone},
+    );
+    if (res.statusCode != 202) {
+      throw ApiException(_errorMessage(res, 'Could not start M-Pesa payment.'), res.statusCode);
+    }
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  /// Fetches the current order state while waiting for the Daraja callback.
+  Future<Map<String, dynamic>> orderByNumber(String orderNumber) async {
+    final res = await _req('GET', '/orders/${Uri.encodeComponent(orderNumber)}/');
+    if (res.statusCode != 200) {
+      throw ApiException(_errorMessage(res, 'Could not check payment status.'), res.statusCode);
+    }
+    return _decode(res) as Map<String, dynamic>;
+  }
 }
