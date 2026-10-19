@@ -83,6 +83,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _place() async {
     final api = ApiService.instance;
+    if (_payment == 'card') {
+      setState(() => _error = 'Card payments are not enabled yet. Please choose M-Pesa or Cash on Delivery.');
+      return;
+    }
     if (!api.isLoggedIn && _email.text.trim().isEmpty) {
       setState(() => _error = 'Enter your email so we can send your receipt.');
       return;
