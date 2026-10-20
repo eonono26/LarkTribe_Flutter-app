@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/cart_provider.dart';
+import '../services/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'catalog_screen.dart';
@@ -42,6 +43,7 @@ class _AtelierNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bagCount = context.watch<CartProvider>().itemCount;
+    final wishlistCount = context.watch<WishlistProvider>().count;
     Widget item(int i, IconData icon, IconData active, String label, {int badge = 0}) {
       final selected = index == i;
       final color = selected ? AppColors.ink : AppColors.subtext;
@@ -56,8 +58,8 @@ class _AtelierNav extends StatelessWidget {
                 Badge(
                   isLabelVisible: badge > 0,
                   label: Text('$badge', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
-                  backgroundColor: AppColors.ink,
-                  textColor: Colors.white,
+                  backgroundColor: const Color(0xFFFFE400),
+                  textColor: AppColors.ink,
                   child: Icon(selected ? active : icon, size: 24, color: color),
                 ),
                 const SizedBox(height: 4),
@@ -84,7 +86,7 @@ class _AtelierNav extends StatelessWidget {
           children: [
             item(0, Icons.explore_outlined, Icons.explore, 'Discover'),
             item(1, Icons.grid_view_outlined, Icons.grid_view_rounded, 'Catalog'),
-            item(2, Icons.favorite_border, Icons.favorite, 'Lookbook'),
+            item(2, Icons.favorite_border, Icons.favorite, 'Lookbook', badge: wishlistCount),
             item(3, Icons.shopping_bag_outlined, Icons.shopping_bag, 'Bag', badge: bagCount),
             item(4, Icons.person_outline, Icons.person, 'Profile'),
           ],
