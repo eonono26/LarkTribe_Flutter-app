@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../services/cart_provider.dart';
+import '../services/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/search_screen.dart';
@@ -324,6 +327,7 @@ class AtelierTopBar extends StatefulWidget {
 
 class _AtelierTopBarState extends State<AtelierTopBar> {
   bool _unread = (_unreadCache ?? 0) > 0;
+  bool _showAnnouncement = true;
 
   @override
   void initState() {
@@ -346,18 +350,56 @@ class _AtelierTopBarState extends State<AtelierTopBar> {
 
   @override
   Widget build(BuildContext context) {
+    final cartCount = context.watch<CartProvider>().itemCount;
+    final wishlistCount = context.watch<WishlistProvider>().count;
+
     return Container(
       color: AppColors.paper,
       child: SafeArea(
         bottom: false,
-        child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            border: widget.line ? const Border(bottom: BorderSide(color: AppColors.hairline)) : null,
-          ),
-          child: Row(
-            children: [
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_showAnnouncement)
+              Container(
+                width: double.infinity,
+                color: const Color(0xFFF6C7A8),
+                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 7),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Text(
+                      'FREE DELIVERY OVER KES 5,000  ·  GET 5% OFF YOUR FIRST ORDER',
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.labelBadge(AppColors.ink).copyWith(
+                        fontSize: 9,
+                        letterSpacing: .45,
+                      ),
+                    ),
+                    Positioned(
+                      right: -28,
+                      child: IconButton(
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        padding: EdgeInsets.zero,
+                        tooltip: 'Dismiss announcement',
+                        icon: const Icon(Icons.close, size: 15, color: AppColors.inkSoft),
+                        onPressed: () => setState(() => _showAnnouncement = false),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Container(
+              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                border: widget.line ? const Border(bottom: BorderSide(color: AppColors.hairline)) : null,
+              ),
+              child: Row(
+                children: [
               if (Navigator.of(context).canPop())
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -399,6 +441,8 @@ class _AtelierTopBarState extends State<AtelierTopBar> {
               const AvatarDot(),
             ],
           ),
+        ),
+          ],
         ),
       ),
     );
