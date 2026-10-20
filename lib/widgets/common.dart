@@ -4,8 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
-import '../services/cart_provider.dart';
-import '../services/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/search_screen.dart';
@@ -350,9 +348,6 @@ class _AtelierTopBarState extends State<AtelierTopBar> {
 
   @override
   Widget build(BuildContext context) {
-    final cartCount = context.watch<CartProvider>().itemCount;
-    final wishlistCount = context.watch<WishlistProvider>().count;
-
     return Container(
       color: AppColors.paper,
       child: SafeArea(
