@@ -57,7 +57,7 @@ class _AtelierNav extends StatelessWidget {
               children: [
                 Badge(
                   isLabelVisible: badge > 0,
-                  label: Text('$badge', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
+                  label: Text(badge > 99 ? '99+' : '$badge', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
                   backgroundColor: const Color(0xFFFFE400),
                   textColor: AppColors.ink,
                   child: Icon(selected ? active : icon, size: 24, color: color),
