@@ -7,6 +7,15 @@ import '../widgets/common.dart';
 import '../widgets/product_card.dart' show mediaUrl;
 import 'product_list_screen.dart';
 
+int _departmentOrder(Department department) {
+  final value = '${department.slug} ${department.name}'.toLowerCase();
+  if (RegExp(r'\b(baby|babies)\b').hasMatch(value)) return 0;
+  if (RegExp(r'\bkids?\b').hasMatch(value)) return 1;
+  if (RegExp(r'\bwomen\b').hasMatch(value)) return 2;
+  if (RegExp(r'\bmen\b').hasMatch(value)) return 3;
+  return 4;
+}
+
 /// The "Shop" tab: browse by department, then by category — a real app
 /// navigation surface (expandable list + chips), not a mega-menu.
 class CategoriesScreen extends StatefulWidget {
@@ -33,6 +42,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with AutomaticKeepA
 
   Future<void> _load() async {
     final departments = await ApiService.instance.departments();
+    departments.sort((a, b) => _departmentOrder(a).compareTo(_departmentOrder(b)));
     if (mounted) {
       setState(() {
         _departments = departments;

@@ -12,6 +12,15 @@ import '../widgets/video_showcase.dart';
 import 'main_shell.dart';
 import 'product_list_screen.dart';
 
+int _homeDepartmentOrder(Department department) {
+  final value = '${department.slug} ${department.name}'.toLowerCase();
+  if (RegExp(r'\b(baby|babies)\b').hasMatch(value)) return 0;
+  if (RegExp(r'\bkids?\b').hasMatch(value)) return 1;
+  if (RegExp(r'\bwomen\b').hasMatch(value)) return 2;
+  if (RegExp(r'\bmen\b').hasMatch(value)) return 3;
+  return 4;
+}
+
 /// Discover — the editorial home feed (Stitch screen 01).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -71,7 +80,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _onSale = results[2].cast<ProductListItem>();
       _topRated = results[3].cast<ProductListItem>();
       _videos = results[4].cast<ShowcaseVideoItem>();
-      _departments = results[5].cast<Department>();
+      _departments = results[5].cast<Department>()
+        ..sort((a, b) => _homeDepartmentOrder(a).compareTo(_homeDepartmentOrder(b)));
       _recommended = results[6].cast<ProductListItem>();
       _failed = failures.length >= 5;
       _loading = false;

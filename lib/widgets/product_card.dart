@@ -123,6 +123,69 @@ class ProductCard extends StatelessWidget {
     return null;
   }
 
+  void _openQuickView(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.line,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 260,
+                width: double.infinity,
+                child: NetImage(product.imageUrl, fit: BoxFit.contain),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                product.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.headlineSm(AppColors.ink).copyWith(fontSize: 20),
+              ),
+              const SizedBox(height: 6),
+              Text(formatKES(product.price), style: AppText.price(16)),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(slug: product.slug),
+                      ),
+                    );
+                  },
+                  child: const Text('View product details'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final badge = _badge;
@@ -148,7 +211,14 @@ class ProductCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                NetImage(product.imageUrl),
+                Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.001)
+                    ..rotateX(0.018)
+                    ..rotateY(-0.022),
+                  child: NetImage(product.imageUrl, fit: BoxFit.contain),
+                ),
 
                 if (badge != null)
                   Positioned(
@@ -165,6 +235,21 @@ class ProductCard extends StatelessWidget {
                   right: 8,
                   child: WishlistButton(
                     productId: product.id,
+                  ),
+                ),
+
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: Material(
+                    color: Colors.white.withOpacity(.96),
+                    shape: const CircleBorder(),
+                    elevation: 4,
+                    child: IconButton(
+                      tooltip: 'Quick view',
+                      icon: const Icon(Icons.visibility_outlined, size: 19),
+                      onPressed: () => _openQuickView(context),
+                    ),
                   ),
                 ),
 
