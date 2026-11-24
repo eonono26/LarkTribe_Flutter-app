@@ -201,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final filtered = _dept == null
         ? _newArrivals
         : _newArrivals.where((p) => p.departmentSlug == _dept).toList();
-    final shown = filtered.take(8).toList();
+    final shown = filtered.take(12).toList();
 
     return Scaffold(
       backgroundColor: AppColors.paper,

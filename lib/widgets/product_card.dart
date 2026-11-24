@@ -215,8 +215,8 @@ class ProductCard extends StatelessWidget {
                   alignment: Alignment.center,
                   transform: Matrix4.identity()
                     ..setEntry(3, 2, 0.001)
-                    ..rotateX(0.018)
-                    ..rotateY(-0.022),
+                    ..rotateX(0.035)
+                    ..rotateY(-0.04),
                   child: NetImage(product.imageUrl, fit: BoxFit.contain),
                 ),
 
@@ -242,12 +242,12 @@ class ProductCard extends StatelessWidget {
                   bottom: 8,
                   right: 8,
                   child: Material(
-                    color: Colors.white.withOpacity(.96),
+                    color: AppColors.ink.withOpacity(.92),
                     shape: const CircleBorder(),
                     elevation: 4,
                     child: IconButton(
                       tooltip: 'Quick view',
-                      icon: const Icon(Icons.visibility_outlined, size: 19),
+                      icon: const Icon(Icons.visibility_outlined, size: 19, color: Colors.white),
                       onPressed: () => _openQuickView(context),
                     ),
                   ),
