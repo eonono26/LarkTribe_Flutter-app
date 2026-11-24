@@ -7,6 +7,12 @@ import '../widgets/common.dart';
 import '../widgets/product_card.dart' show mediaUrl;
 import 'product_list_screen.dart';
 
+String _departmentLabel(Department department) {
+  final value = '${department.slug} ${department.name}'.toLowerCase();
+  if (RegExp(r'\b(baby|babies)\b').hasMatch(value)) return 'Babies';
+  return department.name;
+}
+
 int _departmentOrder(Department department) {
   final value = '${department.slug} ${department.name}'.toLowerCase();
   if (RegExp(r'\b(baby|babies)\b').hasMatch(value)) return 0;
@@ -108,7 +114,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with AutomaticKeepA
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(d.name, style: AppType.headlineSm(AppColors.ink).copyWith(fontSize: 16)),
+                                      Text(_departmentLabel(d), style: AppType.headlineSm(AppColors.ink).copyWith(fontSize: 16)),
                                       if (d.productCount > 0)
                                         Text('${d.productCount} PIECES', style: AppType.labelSm(AppColors.subtext)),
                                     ],
@@ -162,7 +168,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with AutomaticKeepA
         MaterialPageRoute(builder: (_) => ProductListScreen(title: d.name, departmentSlug: d.slug)),
       ),
       icon: const Icon(Icons.grid_view_rounded, size: 16),
-      label: Text('Shop all ${d.name}'),
+      label: Text('Shop all ${_departmentLabel(d)}'),
     );
   }
 }

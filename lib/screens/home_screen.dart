@@ -12,6 +12,12 @@ import '../widgets/video_showcase.dart';
 import 'main_shell.dart';
 import 'product_list_screen.dart';
 
+String _homeDepartmentLabel(Department department) {
+  final value = '${department.slug} ${department.name}'.toLowerCase();
+  if (RegExp(r'\b(baby|babies)\b').hasMatch(value)) return 'Babies';
+  return department.name;
+}
+
 int _homeDepartmentOrder(Department department) {
   final value = '${department.slug} ${department.name}'.toLowerCase();
   if (RegExp(r'\b(baby|babies)\b').hasMatch(value)) return 0;
@@ -238,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   children: [
                                     PillChip('All', selected: _dept == null, onTap: () => setState(() => _dept = null)),
                                     for (final d in _departments)
-                                      PillChip(d.name,
+                                      PillChip(_homeDepartmentLabel(d),
                                           selected: _dept == d.slug,
                                           onTap: () => setState(() => _dept = d.slug)),
                                   ],
