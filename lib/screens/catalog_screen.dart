@@ -9,6 +9,22 @@ import 'brands_screen.dart';
 import 'product_list_screen.dart';
 import 'search_screen.dart';
 
+String _departmentLabel(Department d) {
+  final value = '${d.slug} ${d.name}'.toLowerCase();
+  if (RegExp(r'\\b(baby|babies)\\b').hasMatch(value)) return 'Babies';
+  if (RegExp(r'\\bkids?\\b').hasMatch(value)) return 'Kids';
+  if (RegExp(r'\\bwomen\\b').hasMatch(value)) return 'Women';
+  if (RegExp(r'\\bmen\\b').hasMatch(value)) return 'Men';
+  return d.name;
+}
+
+int _departmentOrder(Department d) {
+  final label = _departmentLabel(d);
+  const order = ['Babies', 'Kids', 'Women', 'Men'];
+  final index = order.indexOf(label);
+  return index < 0 ? 4 : index;
+}
+
 String _roman(int n) {
   const map = [
     [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
@@ -66,7 +82,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
       ]);
       if (!mounted) return;
       setState(() {
-        _departments = r[0].cast<Department>();
+        _departments = r[0].cast<Department>()
+          ..sort((a, b) => _departmentOrder(a).compareTo(_departmentOrder(b)));
         _categories = r[1].cast<Category>();
         _ageGroups = r[2].cast<AgeGroup>();
         _loading = false;
@@ -150,9 +167,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Widget _volumeTile(int index, Department d, {required double aspect, bool large = false}) {
+    final title = _departmentLabel(d);
     return GestureDetector(
       onTap: () => _go(ProductListScreen(
-          title: d.name, eyebrow: 'Collections / ${d.name}', departmentSlug: d.slug)),
+          title: title, eyebrow: 'Collections / $title', departmentSlug: d.slug)),
       child: AspectRatio(
         aspectRatio: aspect,
         child: Stack(fit: StackFit.expand, children: [
@@ -188,7 +206,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: AppType.bodySm(Colors.white.withOpacity(.85))),
               const SizedBox(height: 4),
-              Text(d.name,
+              Text(title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppType.headlineMd(Colors.white).copyWith(fontSize: large ? 26 : 20)),
