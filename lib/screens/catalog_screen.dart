@@ -11,10 +11,10 @@ import 'search_screen.dart';
 
 String _departmentLabel(Department d) {
   final value = '${d.slug} ${d.name}'.toLowerCase();
-  if (RegExp(r'\\b(baby|babies)\\b').hasMatch(value)) return 'Babies';
-  if (RegExp(r'\\bkids?\\b').hasMatch(value)) return 'Kids';
-  if (RegExp(r'\\bwomen\\b').hasMatch(value)) return 'Women';
-  if (RegExp(r'\\bmen\\b').hasMatch(value)) return 'Men';
+  if (RegExp(r'\b(baby|babies)\\b').hasMatch(value)) return 'Babies';
+  if (RegExp(r'\bkids?\\b').hasMatch(value)) return 'Kids';
+  if (RegExp(r'\bwomen\\b').hasMatch(value)) return 'Women';
+  if (RegExp(r'\bmen\\b').hasMatch(value)) return 'Men';
   return d.name;
 }
 
