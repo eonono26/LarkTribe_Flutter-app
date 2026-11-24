@@ -34,6 +34,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   String _color = '';
   String? _size;
   int _imageIndex = 0;
+  bool _show360 = false;
+  int _spinIndex = 0;
+  double _spinDragAccumulator = 0;
   bool _adding = false;
   PageController _pager = PageController();
 
@@ -137,6 +140,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     setState(() {
       _color = color;
       _imageIndex = 0;
+      _show360 = false;
+      _spinIndex = 0;
       if (_size != null && _stockFor(p, _size!) <= 0) _size = null;
     });
     if (_pager.hasClients) _pager.jumpToPage(0);
@@ -271,6 +276,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _gallery(ProductDetail p) {
     final images = _galleryFor(p);
+    final spinFrames = p.spinFrames
+        .where((frame) => frame.color.isEmpty || frame.color == _color)
+        .toList();
+    final has360 = spinFrames.length >= 4;
+    final showing360 = _show360 && has360;
     ({String text, TagTone tone})? badge;
     if (!p.inStock) {
       badge = (text: 'Sold out', tone: TagTone.grey);
@@ -284,31 +294,96 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return AspectRatio(
       aspectRatio: .8,
       child: Stack(fit: StackFit.expand, children: [
-        images.isEmpty
-            ? const ImageFallback()
-            : PageView.builder(
-                controller: _pager,
-                itemCount: images.length,
-                onPageChanged: (i) => setState(() => _imageIndex = i),
-                itemBuilder: (_, i) => GestureDetector(
-                    onTap: () => _openZoom(images, i), child: NetImage(images[i].url)),
-              ),
-        if (badge != null) Positioned(top: 14, left: 14, child: TagBadge(badge.text, tone: badge.tone)),
-        Positioned(top: 12, right: 12, child: WishlistButton(productId: p.id, size: 40)),
-        Positioned(
-          top: 60,
-          right: 12,
-          child: GestureDetector(
-            onTap: images.isEmpty ? null : () => _openZoom(images, _imageIndex),
+        if (showing360)
+          GestureDetector(
+            onHorizontalDragStart: (_) => _spinDragAccumulator = 0,
+            onHorizontalDragUpdate: (details) {
+              _spinDragAccumulator += details.delta.dx;
+              if (_spinDragAccumulator.abs() >= 8) {
+                final steps = (_spinDragAccumulator / 8).truncate();
+                setState(() {
+                  _spinIndex = (_spinIndex - steps) % spinFrames.length;
+                });
+                _spinDragAccumulator -= steps * 8;
+              }
+            },
             child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(color: Colors.white.withOpacity(.92), shape: BoxShape.circle),
-              child: const Icon(Icons.zoom_in, size: 22),
+              color: Colors.white,
+              alignment: Alignment.center,
+              child: NetImage(spinFrames[_spinIndex % spinFrames.length].url, fit: BoxFit.contain),
+            ),
+          )
+        else if (images.isEmpty)
+          const ImageFallback()
+        else
+          PageView.builder(
+            controller: _pager,
+            itemCount: images.length,
+            onPageChanged: (i) => setState(() => _imageIndex = i),
+            itemBuilder: (_, i) => GestureDetector(
+              onTap: () => _openZoom(images, i),
+              child: NetImage(images[i].url),
             ),
           ),
-        ),
-        if (images.length > 1) ...[
+        if (badge != null) Positioned(top: 14, left: 14, child: TagBadge(badge.text, tone: badge.tone)),
+        Positioned(top: 12, right: 12, child: WishlistButton(productId: p.id, size: 40)),
+        if (!showing360)
+          Positioned(
+            top: 60,
+            right: 12,
+            child: GestureDetector(
+              onTap: images.isEmpty ? null : () => _openZoom(images, _imageIndex),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: Colors.white.withOpacity(.92), shape: BoxShape.circle),
+                child: const Icon(Icons.zoom_in, size: 22),
+              ),
+            ),
+          ),
+        if (has360)
+          Positioned(
+            top: 108,
+            right: 12,
+            child: Material(
+              color: showing360 ? AppColors.ink : Colors.white.withOpacity(.94),
+              borderRadius: BorderRadius.circular(99),
+              elevation: 4,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(99),
+                onTap: () => setState(() {
+                  _show360 = !_show360;
+                  _spinIndex = 0;
+                }),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.rotate_right, size: 15, color: showing360 ? Colors.white : AppColors.ink),
+                    const SizedBox(width: 5),
+                    Text(showing360 ? 'PHOTOS' : '360° VIEW',
+                        style: AppType.labelBadge(showing360 ? Colors.white : AppColors.ink)
+                            .copyWith(fontSize: 9, letterSpacing: 1)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        if (showing360)
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              color: Colors.black.withOpacity(.62),
+              child: Text(
+                'DRAG TO ROTATE  ·  ${_spinIndex + 1} / ${spinFrames.length}',
+                textAlign: TextAlign.center,
+                style: AppType.labelBadge(Colors.white).copyWith(fontSize: 9),
+              ),
+            ),
+          ),
+        if (!showing360 && images.length > 1) ...[
           Positioned(
             left: 14,
             bottom: 14,

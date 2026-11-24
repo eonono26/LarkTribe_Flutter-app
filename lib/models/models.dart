@@ -335,6 +335,18 @@ class SizeGuide {
       );
 }
 
+class ProductSpinFrame {
+  final String color;
+  final String url;
+
+  const ProductSpinFrame({this.color = '', required this.url});
+
+  factory ProductSpinFrame.fromJson(Map<String, dynamic> json) => ProductSpinFrame(
+        color: json['color']?.toString() ?? '',
+        url: (json['url'] ?? '').toString(),
+      );
+}
+
 class ProductDetail extends ProductListItem {
   final String description;
   final List<ProductImage> gallery;
@@ -346,6 +358,7 @@ class ProductDetail extends ProductListItem {
   final String materials;
   final String careInstructions;
   final SizeGuide? sizeGuide;
+  final List<ProductSpinFrame> spinFrames;
 
   /// Plain URLs, in gallery order (kept for older call sites).
   List<String> get images => gallery.map((g) => g.url).toList();
@@ -380,6 +393,7 @@ class ProductDetail extends ProductListItem {
     this.materials = '',
     this.careInstructions = '',
     this.sizeGuide,
+    this.spinFrames = const [],
   }) : super(
           imageUrl: gallery.isNotEmpty ? gallery.first.url : null,
           needsSize: variants.any((v) => v.size.isNotEmpty),
@@ -444,6 +458,10 @@ class ProductDetail extends ProductListItem {
       sizeGuide: json['size_guide'] is Map<String, dynamic>
           ? SizeGuide.fromJson(json['size_guide'] as Map<String, dynamic>)
           : null,
+      spinFrames: _asMapList(json['spin_frames'])
+          .map(ProductSpinFrame.fromJson)
+          .where((frame) => frame.url.isNotEmpty)
+          .toList(),
     );
   }
 }
