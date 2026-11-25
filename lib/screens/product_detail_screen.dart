@@ -373,6 +373,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
+        if ((p.arGenerationStatus == 'queued' || p.arGenerationStatus == 'processing') && (p.model3dUrl == null || p.model3dUrl!.isEmpty))
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              color: Colors.black.withOpacity(.68),
+              child: Text(
+                'Your interactive 3D model is being prepared. Photos are available in the meantime.',
+                textAlign: TextAlign.center,
+                style: AppType.bodySm(Colors.white).copyWith(fontSize: 10),
+              ),
+            ),
+          ),
         if (p.model3dUrl != null && p.model3dUrl!.isNotEmpty)
           Positioned(
             top: has360 ? 156 : 108,
