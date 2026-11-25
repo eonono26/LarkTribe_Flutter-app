@@ -6,6 +6,11 @@ import '../widgets/common.dart';
 import '../widgets/product_card.dart';
 import 'styling_screen.dart';
 
+int _productFreshness(ProductListItem product) {
+  final date = product.updatedAt ?? product.createdAt;
+  return date?.millisecondsSinceEpoch ?? product.id;
+}
+
 const _sortLabels = <String, String>{
   '-created_at': 'Newest',
   'price': 'Price: low to high',
@@ -132,7 +137,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
       setState(() {
         _items
           ..clear()
-          ..addAll(res.items);
+          ..addAll(res.items)
+          ..sort((a, b) => _productFreshness(b).compareTo(_productFreshness(a)));
         _count = res.count;
         _hasMore = res.hasMore;
         _loading = false;
@@ -155,7 +161,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
       final res = await _fetch(_page + 1);
       if (!mounted) return;
       setState(() {
-        _items.addAll(res.items);
+        _items
+          ..addAll(res.items)
+          ..sort((a, b) => _productFreshness(b).compareTo(_productFreshness(a)));
         _hasMore = res.hasMore;
         _page += 1;
       });
