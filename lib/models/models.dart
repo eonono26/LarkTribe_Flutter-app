@@ -240,6 +240,8 @@ class ProductListItem {
   final String gender; // 'boys' | 'girls' | 'unisex'
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final bool has3dModel;
+  final String arGenerationStatus;
 
   ProductListItem({
     required this.id,
@@ -268,6 +270,8 @@ class ProductListItem {
     this.gender = '',
     this.createdAt,
     this.updatedAt,
+    this.has3dModel = false,
+    this.arGenerationStatus = 'not_started',
   });
 
   bool get onSale =>
@@ -318,6 +322,8 @@ class ProductListItem {
         gender: json['gender']?.toString() ?? '',
         createdAt: _asDate(json['created_at']),
         updatedAt: _asDate(json['updated_at']),
+        has3dModel: json['has_3d_model'] == true || (json['model_3d_url']?.toString().isNotEmpty ?? false),
+        arGenerationStatus: json['ar_generation_status']?.toString() ?? 'not_started',
       );
 }
 
@@ -432,6 +438,8 @@ class ProductDetail extends ProductListItem {
     super.createdAt,
     super.updatedAt,
     super.backImageUrl,
+    super.has3dModel,
+    super.arGenerationStatus,
     required this.description,
     required this.gallery,
     this.availableSizes = const [],
