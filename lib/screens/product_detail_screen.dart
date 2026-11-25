@@ -415,6 +415,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
+        if (p.arGenerationStatus == 'failed' && (p.model3dUrl == null || p.model3dUrl!.isEmpty))
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              color: Colors.black.withOpacity(.68),
+              child: Text(
+                'A 3D preview is not available for this product yet. You can still explore all photos.',
+                textAlign: TextAlign.center,
+                style: AppType.bodySm(Colors.white).copyWith(fontSize: 10),
+              ),
+            ),
+          ),
         if (p.model3dUrl != null && p.model3dUrl!.isNotEmpty)
           Positioned(
             top: has360 ? 156 : 108,
