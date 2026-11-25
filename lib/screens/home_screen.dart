@@ -12,6 +12,13 @@ import '../widgets/video_showcase.dart';
 import 'main_shell.dart';
 import 'product_list_screen.dart';
 
+int _productFreshness(ProductListItem product) {
+  final date = product.updatedAt ?? product.createdAt;
+  // Keep the same deterministic ID fallback used by the web showroom when
+  // older list responses do not include catalogue timestamps.
+  return date?.millisecondsSinceEpoch ?? product.id;
+}
+
 String _homeDepartmentLabel(Department department) {
   final value = '${department.slug} ${department.name}'.toLowerCase();
   if (RegExp(r'\b(baby|babies)\b').hasMatch(value)) return 'Babies';
@@ -82,8 +89,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() {
       _campaigns = results[0].cast<Campaign>();
-      _newArrivals = results[1].cast<ProductListItem>();
-      _onSale = results[2].cast<ProductListItem>();
+      _newArrivals = results[1].cast<ProductListItem>()
+        ..sort((a, b) => _productFreshness(b).compareTo(_productFreshness(a)));
+      _onSale = results[2].cast<ProductListItem>()
+        ..sort((a, b) => _productFreshness(b).compareTo(_productFreshness(a)));
       _topRated = results[3].cast<ProductListItem>();
       _videos = results[4].cast<ShowcaseVideoItem>();
       _departments = results[5].cast<Department>()
