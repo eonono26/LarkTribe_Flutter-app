@@ -167,12 +167,49 @@ class Brand {
 }
 
 /// One gallery photo. `color` is the variant colour it depicts ('' = general).
+String? _productBackImage(Map<String, dynamic> json) {
+  final images = _asMapList(json['images']);
+  final colors = json['colors'] is List
+      ? (json['colors'] as List).map((e) => e.toString()).toList()
+      : const <String>[];
+  final preferredColor = colors.isEmpty ? '' : colors.first;
+  Map<String, dynamic>? image;
+  if (preferredColor.isNotEmpty) {
+    for (final item in images) {
+      if (item['view']?.toString().toLowerCase() == 'back' &&
+          item['color']?.toString() == preferredColor) {
+        image = item;
+        break;
+      }
+    }
+  }
+  image ??= images.cast<Map<String, dynamic>?>().firstWhere(
+        (item) => item?['view']?.toString().toLowerCase() == 'back' &&
+            (item?['color'] == null || item?['color'].toString().isEmpty),
+        orElse: () => null,
+      );
+  image ??= images.cast<Map<String, dynamic>?>().firstWhere(
+        (item) => item?['view']?.toString().toLowerCase() == 'back',
+        orElse: () => null,
+      );
+  final value = image?['image_url'] ?? image?['image'];
+  return value?.toString();
+}
+
+/// One gallery photo. `color` is the variant colour it depicts ('' = general).
 class ProductImage {
   final String url;
   final String color;
   final String alt;
+  /// Camera angle supplied by the catalogue: front, back, side, detail or other.
+  final String view;
 
-  const ProductImage({required this.url, this.color = '', this.alt = ''});
+  const ProductImage({
+    required this.url,
+    this.color = '',
+    this.alt = '',
+    this.view = 'other',
+  });
 }
 
 class ProductListItem {
@@ -185,6 +222,8 @@ class ProductListItem {
   final String ratingAvg;
   final int ratingCount;
   final String? imageUrl;
+  /// Back-view photo for the selected/first colour, when the catalogue has one.
+  final String? backImageUrl;
   final String vendorName;
   final String? categoryName;
   final String? categorySlug;
@@ -200,6 +239,7 @@ class ProductListItem {
   final Map<String, String> colorImages;
   final String gender; // 'boys' | 'girls' | 'unisex'
   final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   ProductListItem({
     required this.id,
@@ -211,6 +251,7 @@ class ProductListItem {
     required this.ratingAvg,
     required this.ratingCount,
     this.imageUrl,
+    this.backImageUrl,
     required this.vendorName,
     this.categoryName,
     this.categorySlug,
@@ -226,6 +267,7 @@ class ProductListItem {
     this.colorImages = const {},
     this.gender = '',
     this.createdAt,
+    this.updatedAt,
   });
 
   bool get onSale =>
@@ -251,6 +293,7 @@ class ProductListItem {
         ratingAvg: _asString(json['rating_avg']) ?? '0.00',
         ratingCount: _asInt(json['rating_count']) ?? 0,
         imageUrl: json['image_url']?.toString() ?? json['image']?.toString(),
+        backImageUrl: _productBackImage(json),
         vendorName: json['vendor_name']?.toString() ?? '',
         categoryName: json['category_name']?.toString(),
         categorySlug: json['category_slug']?.toString(),
@@ -274,6 +317,7 @@ class ProductListItem {
             : const {},
         gender: json['gender']?.toString() ?? '',
         createdAt: _asDate(json['created_at']),
+        updatedAt: _asDate(json['updated_at']),
       );
 }
 
@@ -383,6 +427,8 @@ class ProductDetail extends ProductListItem {
     super.ageGroups,
     super.gender,
     super.createdAt,
+    super.updatedAt,
+    super.backImageUrl,
     required this.description,
     required this.gallery,
     this.availableSizes = const [],
@@ -408,6 +454,7 @@ class ProductDetail extends ProductListItem {
             url: url,
             color: i['color']?.toString() ?? '',
             alt: i['alt_text']?.toString() ?? '',
+            view: i['view']?.toString().toLowerCase() ?? 'other',
           );
         })
         .whereType<ProductImage>()
@@ -437,6 +484,7 @@ class ProductDetail extends ProductListItem {
       ageGroups: _asMapList(json['age_groups']).map(AgeGroup.fromJson).toList(),
       gender: json['gender']?.toString() ?? '',
       createdAt: _asDate(json['created_at']),
+      updatedAt: _asDate(json['updated_at']),
       description: json['description']?.toString() ?? '',
       gallery: gallery,
       availableSizes: (json['available_sizes'] is List)
