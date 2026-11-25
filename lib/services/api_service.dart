@@ -334,6 +334,11 @@ class ApiService {
     return ProductDetail.fromJson(_ok(res) as Map<String, dynamic>);
   }
 
+  Future<void> product3DStatus(String slug) async {
+    final res = await _req('GET', '/catalog/products/$slug/3d-status/');
+    _ok(res);
+  }
+
   Future<List<ProductListItem>> featuredProducts() =>
       products(ordering: '-created_at', isFeatured: true);
   Future<List<ProductListItem>> newArrivals() => products(ordering: '-created_at');
