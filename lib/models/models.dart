@@ -524,6 +524,8 @@ class ProductDetail extends ProductListItem {
           .map(ProductSpinFrame.fromJson)
           .where((frame) => frame.url.isNotEmpty)
           .toList(),
+      has3dModel: json['has_3d_model'] == true || (json['model_3d_url']?.toString().isNotEmpty ?? false),
+      arGenerationStatus: json['ar_generation_status']?.toString() ?? 'not_started',
       model3dUrl: json['model_3d_url']?.toString(),
       model3dIosUrl: json['model_3d_ios_url']?.toString(),
       model3dPosterUrl: json['model_3d_poster_url']?.toString(),
