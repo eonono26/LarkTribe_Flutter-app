@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/cart_provider.dart';
@@ -35,6 +36,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   String? _size;
   int _imageIndex = 0;
   bool _show360 = false;
+  bool _show3d = false;
   int _spinIndex = 0;
   double _spinDragAccumulator = 0;
   bool _adding = false;
@@ -141,6 +143,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       _color = color;
       _imageIndex = 0;
       _show360 = false;
+      _show3d = false;
       _spinIndex = 0;
       if (_size != null && _stockFor(p, _size!) <= 0) _size = null;
     });
@@ -294,7 +297,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return AspectRatio(
       aspectRatio: .8,
       child: Stack(fit: StackFit.expand, children: [
-        if (showing360)
+        if (_show3d && p.model3dUrl != null && p.model3dUrl!.isNotEmpty)
+          ModelViewer(
+            src: p.model3dUrl!,
+            iosSrc: (p.model3dIosUrl?.isNotEmpty ?? false) ? p.model3dIosUrl : null,
+            alt: p.name,
+            ar: true,
+            arModes: const ['scene-viewer', 'quick-look', 'webxr'],
+            cameraControls: true,
+            autoRotate: true,
+            backgroundColor: Colors.white,
+          )
+        else if (showing360)
           GestureDetector(
             onHorizontalDragStart: (_) => _spinDragAccumulator = 0,
             onHorizontalDragUpdate: (details) {
@@ -356,6 +370,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 height: 40,
                 decoration: BoxDecoration(color: Colors.white.withOpacity(.92), shape: BoxShape.circle),
                 child: const Icon(Icons.zoom_in, size: 22),
+              ),
+            ),
+          ),
+        if (p.model3dUrl != null && p.model3dUrl!.isNotEmpty)
+          Positioned(
+            top: has360 ? 156 : 108,
+            right: 12,
+            child: Material(
+              color: _show3d ? AppColors.ink : Colors.white.withOpacity(.94),
+              borderRadius: BorderRadius.circular(99),
+              elevation: 4,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(99),
+                onTap: () => setState(() {
+                  _show3d = !_show3d;
+                  if (_show3d) _show360 = false;
+                }),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.view_in_ar, size: 15, color: _show3d ? Colors.white : AppColors.ink),
+                    const SizedBox(width: 5),
+                    Text(_show3d ? 'PHOTOS' : '3D · AR',
+                        style: AppType.labelBadge(_show3d ? Colors.white : AppColors.ink)
+                            .copyWith(fontSize: 9, letterSpacing: 1)),
+                  ]),
+                ),
               ),
             ),
           ),
