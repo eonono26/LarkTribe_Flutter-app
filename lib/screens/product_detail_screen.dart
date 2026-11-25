@@ -322,7 +322,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             onPageChanged: (i) => setState(() => _imageIndex = i),
             itemBuilder: (_, i) => GestureDetector(
               onTap: () => _openZoom(images, i),
-              child: NetImage(images[i].url),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  NetImage(images[i].url),
+                  if (images[i].view == 'front' || images[i].view == 'back')
+                    Positioned(
+                      left: 14,
+                      bottom: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        color: Colors.white.withOpacity(.88),
+                        child: Text(
+                          images[i].view.toUpperCase(),
+                          style: AppType.labelBadge(AppColors.ink).copyWith(fontSize: 9),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         if (badge != null) Positioned(top: 14, left: 14, child: TagBadge(badge.text, tone: badge.tone)),
