@@ -403,6 +403,9 @@ class ProductDetail extends ProductListItem {
   final String careInstructions;
   final SizeGuide? sizeGuide;
   final List<ProductSpinFrame> spinFrames;
+  final String? model3dUrl;
+  final String? model3dIosUrl;
+  final String? model3dPosterUrl;
 
   /// Plain URLs, in gallery order (kept for older call sites).
   List<String> get images => gallery.map((g) => g.url).toList();
@@ -440,6 +443,9 @@ class ProductDetail extends ProductListItem {
     this.careInstructions = '',
     this.sizeGuide,
     this.spinFrames = const [],
+    this.model3dUrl,
+    this.model3dIosUrl,
+    this.model3dPosterUrl,
   }) : super(
           imageUrl: gallery.isNotEmpty ? gallery.first.url : null,
           needsSize: variants.any((v) => v.size.isNotEmpty),
@@ -510,6 +516,9 @@ class ProductDetail extends ProductListItem {
           .map(ProductSpinFrame.fromJson)
           .where((frame) => frame.url.isNotEmpty)
           .toList(),
+      model3dUrl: json['model_3d_url']?.toString(),
+      model3dIosUrl: json['model_3d_ios_url']?.toString(),
+      model3dPosterUrl: json['model_3d_poster_url']?.toString(),
     );
   }
 }
