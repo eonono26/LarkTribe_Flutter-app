@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
@@ -41,6 +43,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   double _spinDragAccumulator = 0;
   bool _adding = false;
   PageController _pager = PageController();
+  Timer? _arPollTimer;
 
   @override
   void initState() {
@@ -50,6 +53,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   void dispose() {
+    _arPollTimer?.cancel();
     _pager.dispose();
     super.dispose();
   }
@@ -73,6 +77,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         final sizes = _sizesOf(p);
         _size = sizes.length == 1 ? sizes.first : null;
       });
+      _startArStatusPolling(p);
       ApiService.instance.track('product_view', extra: {'product': p.id});
       ApiService.instance.reviews(p.id).then((r) {
         if (mounted) setState(() => _reviews = r);
@@ -91,6 +96,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         });
       }
     }
+  }
+
+  void _startArStatusPolling(ProductDetail product) {
+    _arPollTimer?.cancel();
+    if (product.model3dUrl?.isNotEmpty == true ||
+        !['queued', 'processing'].contains(product.arGenerationStatus)) {
+      return;
+    }
+    _arPollTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
+      try {
+        await ApiService.instance.product3DStatus(product.slug);
+        final refreshed = await ApiService.instance.product(product.slug);
+        if (!mounted) return;
+        setState(() => _product = refreshed);
+        if (refreshed.model3dUrl?.isNotEmpty == true ||
+            !['queued', 'processing'].contains(refreshed.arGenerationStatus)) {
+          timer.cancel();
+        }
+      } catch (_) {
+        // Keep the existing photo gallery usable if the provider is temporarily unavailable.
+      }
+    });
   }
 
   // ------------------------------------------------------------ variants
