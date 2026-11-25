@@ -230,6 +230,20 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
 
+                if (product.has3dModel || product.arGenerationStatus == 'queued' || product.arGenerationStatus == 'processing')
+                  Positioned(
+                    left: 10,
+                    bottom: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      color: Colors.black.withOpacity(.86),
+                      child: Text(
+                        product.has3dModel ? '3D · AR' : '3D PREPARING',
+                        style: AppType.labelBadge(Colors.white).copyWith(fontSize: 8, letterSpacing: 1),
+                      ),
+                    ),
+                  ),
+
                 Positioned(
                   top: 8,
                   right: 8,
